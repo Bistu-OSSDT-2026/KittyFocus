@@ -71,12 +71,19 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 顶部标题 -->
-        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Orientation="Horizontal">
-            <TextBlock Text="🐱" FontSize="26" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <TextBlock Text="专注猫灵 · 九命专注助手" FontSize="18" FontWeight="Bold"
-                       Foreground="#FF6B4226" VerticalAlignment="Center"/>
-        </StackPanel>
+        <!-- 顶部标题 + 设置按钮 -->
+        <Grid Grid.Row="0">
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                <TextBlock Text="🐱" FontSize="26" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock Text="专注猫灵 · 九命专注助手" FontSize="18" FontWeight="Bold"
+                           Foreground="#FF6B4226" VerticalAlignment="Center"/>
+            </StackPanel>
+            <Button x:Name="SettingsButton" Content="⚙" HorizontalAlignment="Right"
+                    Width="36" Height="36" FontSize="18" Cursor="Hand"
+                    Background="Transparent" Foreground="#FF8A6A52"
+                    BorderThickness="0" Click="SettingsButton_Click"
+                    ToolTip="黑名单设置"/>
+        </Grid>
 
         <!-- 状态标签 -->
         <Border Grid.Row="1" Margin="0,14,0,0" Padding="14,5" CornerRadius="12"

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -6,19 +8,23 @@ using System.Windows.Input;
 using KittyFocus.Models;
 using KittyFocus.Services;
 using KittyFocus.Tray;
+using KittyFocus.Windows;
 
 namespace KittyFocus
 {
     /// <summary>
     /// MainWindow 的交互逻辑：专注控制台界面。
-    /// 持有 FocusEngine / ConfigService / TrayIcon 三个协作对象，
-    /// 通过事件驱动刷新 UI 与托盘状态。
+    /// 持有 FocusEngine / ConfigService / TrayIcon / ProcessWatcher / BlacklistService
+    /// 五个协作对象，通过事件驱动刷新 UI 与检测流程。
     /// </summary>
     public partial class MainWindow : Window
     {
         private readonly FocusEngine _engine;
         private readonly ConfigService _configService;
         private readonly TrayIcon _trayIcon;
+        private readonly ProcessWatcher _watcher;
+        private readonly BlacklistService _blacklistService;
+
         private AppConfig _config;
 
         // 里程碑气泡去重标记（避免重复弹）
@@ -27,6 +33,22 @@ namespace KittyFocus
         private bool _oneMinNotified;
         private bool _firstHideNotified;
 
+        // ---- 模块二状态 ----
+        /// <summary>专注开始时刻（用于 FR-08 缓冲期判断）。</summary>
+        private DateTime _focusStartedAt;
+
+        /// <summary>是否正在显示惩罚/警告对话框（排重）。</summary>
+        private bool _isPenaltyInProgress;
+
+        /// <summary>被「放弃运行」的进程冷却字典（进程名 → 冷却到期时间）。</summary>
+        private readonly Dictionary<string, DateTime> _warnCooldowns = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+
+        private const int WarnCooldownSeconds = 15;
+        private const int BufferPeriodSeconds = 180;   // FR-08
+
+        // ---- SettingsWindow 单例 ----
+        private SettingsWindow _settingsWindow;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -34,12 +56,17 @@ namespace KittyFocus
             _configService = new ConfigService();
             _engine = new FocusEngine();
             _trayIcon = new TrayIcon();
+            _watcher = new ProcessWatcher();
 
             LoadConfig();
+
+            _blacklistService = new BlacklistService(_config);
 
             _engine.StateChanged += OnEngineStateChanged;
             _engine.Tick += OnEngineTick;
             _engine.Finished += OnEngineFinished;
+
+            _watcher.Polled += OnProcessPolled;
 
             _trayIcon.ShowMainWindowRequested += (s, e) => RestoreWindow();
             _trayIcon.ExitRequested += (s, e) => ExitApp();
@@ -60,7 +87,6 @@ namespace KittyFocus
         // ---- FR-01 / FR-02：开始专注 ----
         private void StartButton_Click(object sender, RoutedEventArgs e)
         {
-            // 先把输入框值同步到引擎并校验。
             if (!int.TryParse(DurationTextBox.Text, out int minutes) ||
                 !_engine.SetDuration(minutes))
             {
@@ -69,26 +95,56 @@ namespace KittyFocus
                 return;
             }
 
-            // 合法则持久化新时长。
             _config.FocusDurationMinutes = minutes;
             _configService.Save(_config);
 
             ResetMilestones();
             _engine.Start();
+
+            // ---- 模块二：启动进程轮询 ----
+            _focusStartedAt = DateTime.UtcNow;
+            _warnCooldowns.Clear();
+            _watcher.Start();
         }
 
         // ---- FR-01：强制结束 ----
         private void StopButton_Click(object sender, RoutedEventArgs e)
         {
+            _watcher.Stop();
             _engine.ForceStop();
-            if (_trayIcon != null)
-                _trayIcon.ShowBubble("已中止", "🐱 猫咪松了口气，专注已中止。");
+            _trayIcon.ShowBubble("已中止", "🐱 猫咪松了口气，专注已中止。");
+        }
+
+        // ---- ⚙ 设置按钮（FR-04） ----
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_settingsWindow != null)
+            {
+                _settingsWindow.Focus();
+                return;
+            }
+
+            _settingsWindow = new SettingsWindow(_config, () =>
+            {
+                _configService.Save(_config);
+                _blacklistService.UpdateConfig(_config);
+            });
+
+            _settingsWindow.Closed += (s, args) => _settingsWindow = null;
+            _settingsWindow.Show();
         }
 
         // ---- 引擎事件 ----
         private void OnEngineStateChanged(object sender, EventArgs e)
         {
-            Dispatcher.Invoke(UpdateView);
+            Dispatcher.Invoke(() =>
+            {
+                // 专注结束（强制结束或已完成）→ 停止轮询
+                if (_engine.State != FocusState.Running)
+                    _watcher.Stop();
+
+                UpdateView();
+            });
         }
 
         private void OnEngineTick(object sender, EventArgs e)
@@ -98,7 +154,6 @@ namespace KittyFocus
                 CountdownText.Text = FormatTime(_engine.RemainingSeconds);
                 _trayIcon.UpdateTooltip(BuildTooltip());
 
-                // 仅当窗口隐藏时弹里程碑气泡，避免打扰。
                 if (!IsVisible)
                     CheckMilestones();
             });
@@ -108,10 +163,92 @@ namespace KittyFocus
         {
             Dispatcher.Invoke(() =>
             {
+                _watcher.Stop();
                 UpdateView();
                 _trayIcon.ShowBubble("专注完成", "🎉 专注完成！猫咪很满意~");
                 _trayIcon.UpdateTooltip("🐱 专注完成，猫咪很满意");
             });
+        }
+
+        // ================================================================
+        // 模块二核心：进程轮询检测 → 黑名单匹配 → 缓冲/警告/惩罚
+        // ================================================================
+
+        /// <summary>
+        /// ProcessWatcher 轮询回调（线程池线程）。
+        /// 将匹配与 UI 流程跳转到 UI 线程处理。
+        /// </summary>
+        private void OnProcessPolled(object sender, ProcessInfo info)
+        {
+            if (_isPenaltyInProgress) return;
+
+            var matches = _blacklistService.Check(info);
+            if (matches.Count == 0) return;
+
+            // 有命中 → 跳转到 UI 线程统一处理
+            Dispatcher.Invoke(() => HandleBlacklistMatch(info, matches));
+        }
+
+        /// <summary>
+        /// 处理黑名单命中（UI 线程）。
+        /// FR-08: 缓冲期内仅 Toast
+        /// FR-07: 非缓冲期 → 警告对话框
+        /// FR-06: 牺牲 → 全屏惩罚
+        /// </summary>
+        private void HandleBlacklistMatch(ProcessInfo info, List<BlacklistMatch> matches)
+        {
+            if (_isPenaltyInProgress) return;
+            if (_engine.State != FocusState.Running) return;
+
+            // ---- FR-08：缓冲期检查 ----
+            double elapsedSeconds = (DateTime.UtcNow - _focusStartedAt).TotalSeconds;
+            if (elapsedSeconds < BufferPeriodSeconds)
+            {
+                string matchDesc = string.Join("、", matches.Select(m => $"[{m.MatchType}:{m.RuleText}]"));
+                _trayIcon.ShowBubble("注意（缓冲期）",
+                    $"检测到黑名单：{matchDesc}。专注前 3 分钟仅提醒，不触发惩罚。");
+                return;
+            }
+
+            // ---- 冷却检查：用户刚点过「放弃运行」的同名进程 ----
+            if (_warnCooldowns.TryGetValue(info.ProcessName, out DateTime cooldownUntil))
+            {
+                if (DateTime.UtcNow < cooldownUntil)
+                    return; // 还在冷却中，静默跳过
+                else
+                    _warnCooldowns.Remove(info.ProcessName);
+            }
+
+            // ---- FR-07：警告对话框 ----
+            _isPenaltyInProgress = true;
+
+            try
+            {
+                // 恢复主窗口（让用户看到情况）
+                if (!IsVisible)
+                    RestoreWindow();
+
+                var warnDialog = new WarnDialog($"{info.ProcessName}.exe");
+                warnDialog.Owner = this;
+                bool? warnResult = warnDialog.ShowDialog();
+
+                if (warnResult == true && warnDialog.Sacrificed)
+                {
+                    // ---- FR-06：牺牲 → 全屏惩罚遮罩 ----
+                    var deathOverlay = new DeathOverlay($"{info.ProcessName}.exe", info.ProcessId);
+                    deathOverlay.ShowDialog();
+                    // 用户已操作（已知晓/关闭程序），继续
+                }
+                else
+                {
+                    // 用户选择「放弃运行」→ 冷却期内不再警告同进程
+                    _warnCooldowns[info.ProcessName] = DateTime.UtcNow.AddSeconds(WarnCooldownSeconds);
+                }
+            }
+            finally
+            {
+                _isPenaltyInProgress = false;
+            }
         }
 
         // ---- UI 状态联动 ----
@@ -122,6 +259,7 @@ namespace KittyFocus
             StartButton.IsEnabled = !running;
             StopButton.IsEnabled = running;
             DurationTextBox.IsEnabled = !running;
+            SettingsButton.IsEnabled = !running; // 专注中禁设
 
             switch (_engine.State)
             {
@@ -148,6 +286,7 @@ namespace KittyFocus
             }
         }
 
+        // ---- 里程碑气泡 ----
         private void CheckMilestones()
         {
             int remain = _engine.RemainingSeconds;
@@ -206,7 +345,7 @@ namespace KittyFocus
 
         private void ExitApp()
         {
-            // 真正退出时取消关闭拦截。
+            _watcher.Stop();
             _engine.ForceStop();
             _trayIcon.Dispose();
             Application.Current.Shutdown();
