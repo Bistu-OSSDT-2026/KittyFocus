@@ -1,13 +1,12 @@
 # KittyFocus 自动构建工作流
+# 使用 .NET SDK 作为构建工具（替代传统的 MSBuild）
 
 name: Build KittyFocus
 
 on:
-  # 仅在推送标签时触发（如 v1.0.0）
   push:
     branches:
       - main
-  # 允许手动触发（方便调试）
   workflow_dispatch:
 
 jobs:
@@ -21,31 +20,31 @@ jobs:
           - Release
 
     steps:
-      # 1. 检出代码
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # 3. 安装 MSBuild（查找 Visual Studio 2022 实例）
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
         with:
-          vs-version: '[17.0,18.0)'
+          dotnet-version: '9.0.x'
 
-      # 4. 直接编译项目
+      # dotnet restore 恢复 NuGet 包依赖（比 nuget restore 更现代）
+      - name: Restore NuGet packages
+        run: dotnet restore KittyFocus.csproj
+
+      # 使用 dotnet build 替代原始 msbuild 命令
       - name: Build (${{ matrix.configuration }} / AnyCPU)
         run: |
-          msbuild KittyFocus.csproj `
-            /p:Configuration=${{ matrix.configuration }} `
-            /p:Platform="AnyCPU" `
-            /p:Deterministic=true `
-            /m `
-            /p:WarningLevel=4 `
-            /p:TreatWarningsAsErrors=false `
-            /t:Build `
-            /verbosity:normal
+          dotnet build KittyFocus.csproj `
+            --configuration ${{ matrix.configuration }} `
+            --no-restore `
+            -p:Platform=AnyCPU `
+            -p:Deterministic=true `
+            -p:WarningLevel=4 `
+            -p:TreatWarningsAsErrors=false `
+            -m
         shell: pwsh
 
-      # 5. 检查编译产物
       - name: Verify build output
         shell: pwsh
         run: |
@@ -63,18 +62,15 @@ jobs:
           Write-Host "  产品版本: $($versionInfo.ProductVersion)"
           Write-Host "  文件大小: $((Get-Item $exePath).Length / 1KB) KB"
 
-      # 6. 上传构建产物
       - name: Upload artifacts (${{ matrix.configuration }})
         uses: actions/upload-artifact@v4
         with:
           name: KittyFocus-${{ matrix.configuration }}
           path: |
             bin/${{ matrix.configuration }}/KittyFocus.exe
-
           if-no-files-found: error
           retention-days: 30
 
-  # --- 发布作业：当推送 tag v* 时创建 GitHub Release ---
   release:
     needs: [build]
     runs-on: windows-latest
