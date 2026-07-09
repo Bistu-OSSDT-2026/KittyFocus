@@ -1,21 +1,26 @@
-﻿<Window x:Class="KittyFocus.MainWindow"
+<Window x:Class="KittyFocus.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="专注猫灵 · 九命专注助手" Height="520" Width="420"
+        Title="KittyFocus" Height="560" Width="474"
         ResizeMode="CanMinimize"
         WindowStartupLocation="CenterScreen"
-        Background="#FFFBF6F0">
+        Background="#FFFBF6F0"
+        WindowStyle="None"
+        AllowsTransparency="True">
+
+    <!-- 圆角裁剪 + 阴影 -->
     <Window.Resources>
         <!-- 主按钮样式：开始专注（绿） -->
         <Style x:Key="StartButton" TargetType="Button">
             <Setter Property="Background" Value="#FF5BB85B"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="Height" Value="46"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Width" Value="120"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
@@ -40,8 +45,9 @@
             <Setter Property="Background" Value="#FFE05A5A"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="Height" Value="46"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Width" Value="120"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
@@ -60,75 +66,118 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- 黑名单管理按钮（黑） -->
+        <Style x:Key="BlacklistButton" TargetType="Button">
+            <Setter Property="Background" Value="#FF3C3C3C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="28,24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <!-- 外层圆角边框 -->
+    <Border Background="#FFFBF6F0" CornerRadius="16"
+            BorderBrush="#FFE0D5C8" BorderThickness="1"
+            Margin="8" Padding="20,24">
+        <Border.Effect>
+            <DropShadowEffect Color="#33000000" BlurRadius="16" ShadowDepth="4" Direction="270"/>
+        </Border.Effect>
 
-        <!-- 顶部标题 + 设置按钮 -->
-        <Grid Grid.Row="0">
-            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                <TextBlock Text="🐱" FontSize="26" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBlock Text="专注猫灵 · 九命专注助手" FontSize="18" FontWeight="Bold"
-                           Foreground="#FF6B4226" VerticalAlignment="Center"/>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 第一行：右上角 - 软件名称 + 小圆环倒计时 -->
+            <StackPanel Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,0,8">
+                <!-- 软件名称 -->
+                <TextBlock Text="KittyFocus" FontSize="22" FontWeight="Bold"
+                           Foreground="#FF6B4226"
+                           HorizontalAlignment="Right" Margin="0,0,0,6"/>
+                <!-- 小圆环倒计时（用 Canvas 精确控制坐标系） -->
+                <Canvas Width="100" Height="100" HorizontalAlignment="Right">
+                    <!-- 环状进度条背景（淡粉色底环） -->
+                    <Ellipse Stroke="#FFEDD5D5" StrokeThickness="6"
+                             Width="88" Height="88"
+                             Canvas.Left="6" Canvas.Top="6"/>
+
+                    <!-- 环状进度条前景（深粉色弧，与底环同心同径） -->
+                    <Path x:Name="ProgressArc"
+                          Stroke="#FFC9A9B8" StrokeThickness="6"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Fill="Transparent"/>
+
+                    <!-- 圆圈内的粉色倒计时 -->
+                    <TextBlock x:Name="CountdownText" Text="25:00"
+                               FontSize="16" FontWeight="Bold"
+                               Canvas.Left="0" Canvas.Top="37" Width="100" Height="97"
+                               TextAlignment="Center"
+                               Foreground="#FFF28CB1" HorizontalAlignment="Center" VerticalAlignment="Top">
+                        <TextBlock.Effect>
+                            <DropShadowEffect Color="#44F28CB1" BlurRadius="6" ShadowDepth="0"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                </Canvas>
             </StackPanel>
-            <Button x:Name="SettingsButton" Content="⚙" HorizontalAlignment="Right"
-                    Width="36" Height="36" FontSize="18" Cursor="Hand"
-                    Background="Transparent" Foreground="#FF8A6A52"
-                    BorderThickness="0" Click="SettingsButton_Click"
-                    ToolTip="黑名单设置"/>
-        </Grid>
 
-        <!-- 状态标签 -->
-        <Border Grid.Row="1" Margin="0,14,0,0" Padding="14,5" CornerRadius="12"
-                Background="#FFF0E6DA" HorizontalAlignment="Center">
-            <TextBlock x:Name="StatusText" Text="空闲中" FontSize="13"
-                       Foreground="#FF8A6A52" FontWeight="SemiBold"/>
-        </Border>
-
-        <!-- 超大号倒计时 -->
-        <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center">
-            <TextBlock x:Name="CountdownText" Text="25:00" FontSize="78" FontWeight="Bold"
-                       HorizontalAlignment="Center" Foreground="#FF4A3526">
-                <TextBlock.Effect>
-                    <DropShadowEffect Color="#22FFA75F" BlurRadius="18" ShadowDepth="0"/>
-                </TextBlock.Effect>
-            </TextBlock>
-            <TextBlock x:Name="HintText" Text="设置时长后点击开始" FontSize="12"
-                       Foreground="#FFB59B82" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-        </StackPanel>
-
-        <!-- 时长设置区 -->
-        <StackPanel Grid.Row="3" Margin="0,0,0,18">
-            <TextBlock Text="专注时长" FontSize="13" Foreground="#FF8A6A52" Margin="0,0,0,6"/>
-            <StackPanel Orientation="Horizontal">
-                <TextBox x:Name="DurationTextBox" Width="90" FontSize="18" Padding="6,4"
-                         VerticalContentAlignment="Center" TextAlignment="Center"
-                         PreviewTextInput="DurationTextBox_PreviewTextInput"
-                         DataObject.Pasting="DurationTextBox_Pasting"/>
-                <TextBlock Text="分钟" FontSize="14" Foreground="#FF8A6A52"
-                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                <TextBlock Text="范围 1 ~ 720 分钟" FontSize="11" Foreground="#FFB59B82"
-                           VerticalAlignment="Center" Margin="14,0,0,0"/>
+            <!-- 第二行：中间 - 猫咪 emoji + 提示词 -->
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="🐱" FontSize="120" Height="208"
+                           />
+                <TextBlock x:Name="HintText" Text="设置时长后点击开始"
+                           FontSize="13" Foreground="#FFB59B82"
+                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
             </StackPanel>
-        </StackPanel>
 
-        <!-- 控制按钮 -->
-        <Grid Grid.Row="4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <Button x:Name="StartButton" Grid.Column="0" Content="开始专注" Margin="0,0,6,0"
-                    Style="{StaticResource StartButton}" Click="StartButton_Click"/>
-            <Button x:Name="StopButton" Grid.Column="1" Content="强制结束" Margin="6,0,0,0"
-                    Style="{StaticResource StopButton}" Click="StopButton_Click" IsEnabled="False"/>
+            <!-- 第三行：专注时长输入白框 -->
+            <Grid Grid.Row="2" Margin="0,6,0,16">
+                <Border Background="White" CornerRadius="10"
+                        BorderBrush="#FFE0D5C8" BorderThickness="1"
+                        HorizontalAlignment="Center" Padding="14,8">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="⏱" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox x:Name="DurationTextBox"
+                                 Width="60" FontSize="16" Padding="4,2"
+                                 VerticalContentAlignment="Center" TextAlignment="Center"
+                                 Background="Transparent" BorderThickness="0"
+                                 PreviewTextInput="DurationTextBox_PreviewTextInput"
+                                 DataObject.Pasting="DurationTextBox_Pasting"/>
+                        <TextBlock Text="分钟" FontSize="13" Foreground="#FF8A6A52"
+                                   VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- 第四行：三个按钮 -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                <Button x:Name="StartButton" Content="开始专注"
+                        Style="{StaticResource StartButton}" Margin="0,0,8,0"
+                        Click="StartButton_Click"/>
+                <Button x:Name="StopButton" Content="强制结束"
+                        Style="{StaticResource StopButton}" Margin="0,0,8,0"
+                        Click="StopButton_Click" IsEnabled="False"/>
+                <Button x:Name="BlacklistButton" Content="黑名单管理"
+                        Style="{StaticResource BlacklistButton}"
+                        Click="SettingsButton_Click"/>
+            </StackPanel>
         </Grid>
-    </Grid>
+    </Border>
 </Window>
