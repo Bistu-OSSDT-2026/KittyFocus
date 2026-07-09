@@ -1,0 +1,108 @@
+# KittyFocus 自动构建工作流
+
+name: Build KittyFocus
+
+on:
+  # 仅在推送标签时触发（如 v1.0.0）
+  push:
+    branches:
+      - main
+  # 允许手动触发（方便调试）
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        configuration:
+          - Debug
+          - Release
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 3. 安装 MSBuild（查找 Visual Studio 2022 实例）
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '[17.0,18.0)'
+
+      # 4. 直接编译项目
+      - name: Build (${{ matrix.configuration }} / AnyCPU)
+        run: |
+          msbuild KittyFocus.csproj `
+            /p:Configuration=${{ matrix.configuration }} `
+            /p:Platform="AnyCPU" `
+            /p:Deterministic=true `
+            /m `
+            /p:WarningLevel=4 `
+            /p:TreatWarningsAsErrors=false `
+            /t:Build `
+            /verbosity:normal
+        shell: pwsh
+
+      # 5. 检查编译产物
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          $outputPath = "${{ github.workspace }}\bin\${{ matrix.configuration }}"
+          $exePath = Join-Path $outputPath "KittyFocus.exe"
+
+          if (-not (Test-Path $exePath)) {
+            Write-Error "编译失败：未找到 KittyFocus.exe"
+            exit 1
+          }
+
+          $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($exePath)
+          Write-Host "✓ KittyFocus.exe 编译成功"
+          Write-Host "  文件版本: $($versionInfo.FileVersion)"
+          Write-Host "  产品版本: $($versionInfo.ProductVersion)"
+          Write-Host "  文件大小: $((Get-Item $exePath).Length / 1KB) KB"
+
+      # 6. 上传构建产物
+      - name: Upload artifacts (${{ matrix.configuration }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: KittyFocus-${{ matrix.configuration }}
+          path: |
+            bin/${{ matrix.configuration }}/KittyFocus.exe
+
+          if-no-files-found: error
+          retention-days: 30
+
+  # --- 发布作业：当推送 tag v* 时创建 GitHub Release ---
+  release:
+    needs: [build]
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download Release build
+        uses: actions/download-artifact@v4
+        with:
+          name: KittyFocus-Release
+          path: KittyFocus-Release
+
+      - name: Create release archive
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path KittyFocus-Release\* `
+            -DestinationPath "KittyFocus-${{ github.ref_name }}.zip" `
+            -Force
+          Write-Host "✓ 压缩包已创建: KittyFocus-${{ github.ref_name }}.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: KittyFocus-${{ github.ref_name }}.zip
+          generate_release_notes: true
+          body: |
+            ## KittyFocus ${{ github.ref_name }}
+
+            自动构建于 $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') (UTC)。
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
