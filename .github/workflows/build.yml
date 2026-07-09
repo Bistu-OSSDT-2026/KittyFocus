@@ -1,14 +1,11 @@
 # KittyFocus 自动构建工作流
-# 混合使用 .NET SDK + MSBuild：
-#   - actions/setup-dotnet → dotnet restore（现代 NuGet 工具链）
-#   - microsoft/setup-msbuild → msbuild（经典 WPF 项目需 Visual Studio MSBuild 编译 XAML）
 
 name: Build KittyFocus
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:
@@ -31,11 +28,35 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      # 安装 Visual Studio MSBuild —— 编译经典 .NET Framework WPF 项目必需
-      - name: Setup MSBuild (for WPF XAML compilation)
-        uses: microsoft/setup-msbuild@v2
-        with:
-          vs-version: '[17.0,18.0)'
+      # 使用 vswhere 查找并设置 MSBuild 路径（替代 setup-msbuild action）
+      - name: Setup MSBuild (via vswhere)
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) {
+            $vswhere = "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe"
+          }
+
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if (-not $vsPath) {
+            Write-Error "Visual Studio/MSBuild 未找到"
+            exit 1
+          }
+
+          $msbuildExe = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
+          if (-not (Test-Path $msbuildExe)) {
+            # 后备：x86 架构路径
+            $msbuildExe = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
+            if (-not (Test-Path $msbuildExe)) {
+              Write-Error "MSBuild.exe 未在预期路径找到: $msbuildExe"
+              exit 1
+            }
+          }
+
+          Write-Host "Found MSBuild: $msbuildExe"
+          # 将 MSBuild 目录加入 GITHUB_PATH，后续步骤可直接调用 msbuild
+          $msbuildDir = Split-Path $msbuildExe -Parent
+          echo "$msbuildDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       # 使用 dotnet restore 替代 nuget restore（更现代、更简洁）
       - name: Restore NuGet packages
