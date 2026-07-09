@@ -1,5 +1,7 @@
 # KittyFocus 自动构建工作流
-# 使用 .NET SDK 作为构建工具（替代传统的 MSBuild）
+# 混合使用 .NET SDK + MSBuild：
+#   - actions/setup-dotnet → dotnet restore（现代 NuGet 工具链）
+#   - microsoft/setup-msbuild → msbuild（经典 WPF 项目需 Visual Studio MSBuild 编译 XAML）
 
 name: Build KittyFocus
 
@@ -23,26 +25,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 安装 .NET SDK —— 提供 dotnet restore 等现代 CLI 工具
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
 
-      # dotnet restore 恢复 NuGet 包依赖（比 nuget restore 更现代）
+      # 安装 Visual Studio MSBuild —— 编译经典 .NET Framework WPF 项目必需
+      - name: Setup MSBuild (for WPF XAML compilation)
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '[17.0,18.0)'
+
+      # 使用 dotnet restore 替代 nuget restore（更现代、更简洁）
       - name: Restore NuGet packages
         run: dotnet restore KittyFocus.csproj
 
-      # 使用 dotnet build 替代原始 msbuild 命令
+      # msbuild 是编译此类型项目的可靠方式（dotnet build 不兼容非 SDK 风格 WPF 项目）
       - name: Build (${{ matrix.configuration }} / AnyCPU)
         run: |
-          dotnet build KittyFocus.csproj `
-            --configuration ${{ matrix.configuration }} `
-            --no-restore `
-            -p:Platform=AnyCPU `
-            -p:Deterministic=true `
-            -p:WarningLevel=4 `
-            -p:TreatWarningsAsErrors=false `
-            -m
+          msbuild KittyFocus.csproj `
+            /p:Configuration=${{ matrix.configuration }} `
+            /p:Platform="AnyCPU" `
+            /p:Deterministic=true `
+            /m `
+            /p:WarningLevel=4 `
+            /p:TreatWarningsAsErrors=false `
+            /t:Build `
+            /verbosity:normal
         shell: pwsh
 
       - name: Verify build output
