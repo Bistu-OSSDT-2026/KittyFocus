@@ -5,8 +5,8 @@ name: Build KittyFocus
 on:
   # 仅在推送标签时触发（如 v1.0.0）
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
   # 允许手动触发（方便调试）
   workflow_dispatch:
 
