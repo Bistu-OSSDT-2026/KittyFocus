@@ -12,17 +12,16 @@
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <Style TargetType="Button">
-            <Setter Property="Height" Value="46"/>
-            <Setter Property="MinWidth" Value="160"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="MinWidth" Value="200"/>
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Margin" Value="6,0"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="10">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="12">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </ControlTemplate>
@@ -32,43 +31,47 @@
     </Window.Resources>
 
     <Grid>
-        <!-- 半透明暗色底层 -->
-        <Rectangle Fill="#CC111111"/>
+        <!-- 暗色遮罩 -->
+        <Rectangle Fill="#E6111111"/>
 
-        <!-- 中央内容 -->
-        <Border Background="#FFFBF6F0" CornerRadius="20" Padding="50,40"
+        <!-- 中央失败面板 -->
+        <Border Background="#FFFBF6F0" CornerRadius="24" Padding="50,40"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                MaxWidth="480" BorderBrush="#FFDDCCBB" BorderThickness="1">
-            <StackPanel>
-                <TextBlock Text="💀" FontSize="64" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                <TextBlock Text="猫咪阵亡" FontSize="32" FontWeight="Bold"
-                           Foreground="#FF4A3526" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                <TextBlock Text="检测到违规程序，猫咪受到了严重伤害……" FontSize="14"
-                           Foreground="#FF8A6A52" HorizontalAlignment="Center"
-                           TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,4"/>
+                MaxWidth="460" BorderBrush="#FFDDCCBB" BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect Color="#44000000" BlurRadius="30" ShadowDepth="4"/>
+            </Border.Effect>
 
-                <Border Background="#FFF0E6DA" CornerRadius="8" Padding="12,6"
-                        HorizontalAlignment="Center" Margin="0,10,0,20">
-                    <TextBlock x:Name="ProcessNameText" FontSize="14" FontWeight="SemiBold"
-                               Foreground="#FFCC6633" VerticalAlignment="Center"/>
+            <StackPanel>
+                <!-- 猫受伤 -->
+                <TextBlock Text="😿" FontSize="72" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+                <!-- 标题 -->
+                <TextBlock x:Name="TitleText" Text="专注失败" FontSize="34" FontWeight="Bold"
+                           Foreground="#FF4A3526" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+                <TextBlock x:Name="SubtitleText" Text="猫咪因你而受伤…" FontSize="15"
+                           Foreground="#FF8A6A52" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+
+                <TextBlock x:Name="DescriptionText" Text="本次专注已因检测到违规程序而中断" FontSize="13"
+                           Foreground="#FFB59B82" HorizontalAlignment="Center"
+                           TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
+
+                <!-- 违规程序名 -->
+                <Border Background="#FFF0E6DA" CornerRadius="8" Padding="14,8"
+                        HorizontalAlignment="Center" Margin="0,16,0,24">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="⚠ " FontSize="15" Foreground="#FFCC6633"/>
+                        <TextBlock x:Name="ProcessNameText" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="#FF4A3526" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Border>
 
-                <TextBlock Text="请关闭违规程序以保护猫咪，或点击下方按钮继续。" FontSize="12"
-                           Foreground="#FFB59B82" HorizontalAlignment="Center"
-                           TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,20"/>
-
-                <Grid HorizontalAlignment="Center">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Button x:Name="AcknowledgeButton" Grid.Column="0"
-                            Content="已知晓" Background="#FF8A6A52" Foreground="White"
-                            Click="AcknowledgeButton_Click"/>
-                    <Button x:Name="KillButton" Grid.Column="1"
-                            Content="关闭违规程序" Background="#FFE05A5A" Foreground="White"
-                            Click="KillButton_Click"/>
-                </Grid>
+                <!-- 确认按钮 -->
+                <Button Content="我明白了"
+                        Background="#FF8A6A52" Foreground="White"
+                        Click="AcknowledgeButton_Click"
+                        HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>
     </Grid>

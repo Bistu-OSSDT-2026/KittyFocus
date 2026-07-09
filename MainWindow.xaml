@@ -128,9 +128,9 @@
                     <!-- 圆圈内的粉色倒计时 -->
                     <TextBlock x:Name="CountdownText" Text="25:00"
                                FontSize="16" FontWeight="Bold"
-                               Canvas.Left="0" Canvas.Top="37" Width="100" Height="97"
+                               Canvas.Left="0" Width="100" Height="100"
                                TextAlignment="Center"
-                               Foreground="#FFF28CB1" HorizontalAlignment="Center" VerticalAlignment="Top">
+                               Foreground="#FFF28CB1" HorizontalAlignment="Center" VerticalAlignment="Top" Canvas.Top="34">
                         <TextBlock.Effect>
                             <DropShadowEffect Color="#44F28CB1" BlurRadius="6" ShadowDepth="0"/>
                         </TextBlock.Effect>
