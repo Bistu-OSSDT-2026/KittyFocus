@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using KittyFocus.Models;
 using KittyFocus.Services;
 using KittyFocus.Tray;
@@ -52,6 +53,9 @@ namespace KittyFocus
         public MainWindow()
         {
             InitializeComponent();
+
+            // 允许无边框窗口拖动
+            this.MouseLeftButtonDown += (s, e) => DragMove();
 
             _configService = new ConfigService();
             _engine = new FocusEngine();
@@ -152,6 +156,7 @@ namespace KittyFocus
             Dispatcher.Invoke(() =>
             {
                 CountdownText.Text = FormatTime(_engine.RemainingSeconds);
+                UpdateProgressRing();
                 _trayIcon.UpdateTooltip(BuildTooltip());
 
                 if (!IsVisible)
@@ -259,29 +264,29 @@ namespace KittyFocus
             StartButton.IsEnabled = !running;
             StopButton.IsEnabled = running;
             DurationTextBox.IsEnabled = !running;
-            SettingsButton.IsEnabled = !running; // 专注中禁设
+            BlacklistButton.IsEnabled = !running; // 专注中禁设
 
             switch (_engine.State)
             {
                 case FocusState.Idle:
-                    StatusText.Text = "空闲中";
                     HintText.Text = "设置时长后点击开始";
                     CountdownText.Text = FormatTime(_engine.TotalSeconds);
                     StartButton.Content = "开始专注";
+                    UpdateProgressRing();
                     _trayIcon.UpdateTooltip("🐱 空闲中 — 专注猫灵");
                     break;
                 case FocusState.Running:
-                    StatusText.Text = "专注中…";
                     HintText.Text = "坚持住，猫咪在守护你";
                     CountdownText.Text = FormatTime(_engine.RemainingSeconds);
                     StartButton.Content = "专注中";
+                    UpdateProgressRing();
                     _trayIcon.UpdateTooltip(BuildTooltip());
                     break;
                 case FocusState.Finished:
-                    StatusText.Text = "已完成";
                     HintText.Text = "太棒了！可点击「再来一轮」";
                     CountdownText.Text = "00:00";
                     StartButton.Content = "再来一轮";
+                    UpdateProgressRing();
                     break;
             }
         }
@@ -384,6 +389,46 @@ namespace KittyFocus
             if (_engine.State == FocusState.Running)
                 return $"🐱 专注中 {FormatTime(_engine.RemainingSeconds)}";
             return "🐱 空闲中 — 专注猫灵";
+        }
+
+        /// <summary>
+        /// 更新环状进度条：根据剩余时间比例计算圆弧终点，
+        /// 实现圆环随计时减少而逆时针消失的效果。
+        /// 坐标系与 XAML 中 Canvas 一致：圆心(50,50)，半径44，顶部起点(50,6)。
+        /// 前景弧与背景 Ellipse（Left=6, Top=6, W=88, H=88）完全同心同径。
+        /// </summary>
+        private void UpdateProgressRing()
+        {
+            if (_engine.TotalSeconds <= 0)
+            {
+                ProgressArc.Data = Geometry.Parse("M 50,6 A 44,44 0 0 1 50,6");
+                return;
+            }
+
+            double progress = (double)_engine.RemainingSeconds / _engine.TotalSeconds;
+            // 从顶部(50,6)顺时针绘制弧线
+            double angle = progress * 360.0;
+
+            if (progress >= 0.999)
+            {
+                // 满圆：用 359.9° 代替（ArcSegment 不支持 360°）
+                double nearEndAngle = 359.9 * Math.PI / 180.0;
+                double ex = 50 + 44 * Math.Sin(nearEndAngle);
+                double ey = 50 - 44 * Math.Cos(nearEndAngle);
+                ProgressArc.Data = Geometry.Parse($"M 50,6 A 44,44 0 1 1 {ex:0.###},{ey:0.###}");
+            }
+            else if (progress <= 0.001)
+            {
+                ProgressArc.Data = Geometry.Parse("M 50,6 A 44,44 0 0 1 50,6");
+            }
+            else
+            {
+                double rad = angle * Math.PI / 180.0;
+                double ex = 50 + 44 * Math.Sin(rad);
+                double ey = 50 - 44 * Math.Cos(rad);
+                string largeArc = angle > 180.0 ? "1" : "0";
+                ProgressArc.Data = Geometry.Parse($"M 50,6 A 44,44 0 {largeArc} 1 {ex:0.###},{ey:0.###}");
+            }
         }
     }
 }
