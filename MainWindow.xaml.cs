@@ -15,8 +15,8 @@ namespace KittyFocus
 {
     /// <summary>
     /// MainWindow 的交互逻辑：专注控制台界面。
-    /// 持有 FocusEngine / ConfigService / TrayIcon / ProcessWatcher / BlacklistService
-    /// 五个协作对象，通过事件驱动刷新 UI 与检测流程。
+    /// 持有 FocusEngine / ConfigService / TrayIcon 三个协作对象，
+    /// 通过事件驱动刷新 UI 与托盘状态。
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -44,7 +44,6 @@ namespace KittyFocus
         /// <summary>被「放弃运行」的进程冷却字典（进程名 → 冷却到期时间）。</summary>
         private readonly Dictionary<string, DateTime> _warnCooldowns = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
 
-        private const int WarnCooldownSeconds = 15;
         private const int BufferPeriodSeconds = 180;   // FR-08
 
         // ---- SettingsWindow 单例 ----
@@ -91,6 +90,7 @@ namespace KittyFocus
         // ---- FR-01 / FR-02：开始专注 ----
         private void StartButton_Click(object sender, RoutedEventArgs e)
         {
+            // 先把输入框值同步到引擎并校验。
             if (!int.TryParse(DurationTextBox.Text, out int minutes) ||
                 !_engine.SetDuration(minutes))
             {
@@ -99,6 +99,7 @@ namespace KittyFocus
                 return;
             }
 
+            // 合法则持久化新时长。
             _config.FocusDurationMinutes = minutes;
             _configService.Save(_config);
 
@@ -116,10 +117,13 @@ namespace KittyFocus
         {
             _watcher.Stop();
             _engine.ForceStop();
-            _trayIcon.ShowBubble("已中止", "🐱 猫咪松了口气，专注已中止。");
+            // 弹出终止确认界面，原因标记为「强制终止」
+            var deathOverlay = new DeathOverlay("强制终止", isForcedTermination: true);
+            deathOverlay.Owner = this;
+            deathOverlay.ShowDialog();
+
         }
 
-        // ---- ⚙ 设置按钮（FR-04） ----
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             if (_settingsWindow != null)
@@ -141,14 +145,7 @@ namespace KittyFocus
         // ---- 引擎事件 ----
         private void OnEngineStateChanged(object sender, EventArgs e)
         {
-            Dispatcher.Invoke(() =>
-            {
-                // 专注结束（强制结束或已完成）→ 停止轮询
-                if (_engine.State != FocusState.Running)
-                    _watcher.Stop();
-
-                UpdateView();
-            });
+            Dispatcher.Invoke(UpdateView);
         }
 
         private void OnEngineTick(object sender, EventArgs e)
@@ -159,6 +156,7 @@ namespace KittyFocus
                 UpdateProgressRing();
                 _trayIcon.UpdateTooltip(BuildTooltip());
 
+                // 仅当窗口隐藏时弹里程碑气泡，避免打扰。
                 if (!IsVisible)
                     CheckMilestones();
             });
@@ -197,34 +195,12 @@ namespace KittyFocus
         /// <summary>
         /// 处理黑名单命中（UI 线程）。
         /// FR-08: 缓冲期内仅 Toast
-        /// FR-07: 非缓冲期 → 警告对话框
-        /// FR-06: 牺牲 → 全屏惩罚
+        /// FR-07: 非缓冲期 → 警告对话框（自动检测进程关闭）
+        /// FR-06: 超时未关 → 全屏惩罚
         /// </summary>
         private void HandleBlacklistMatch(ProcessInfo info, List<BlacklistMatch> matches)
         {
-            if (_isPenaltyInProgress) return;
-            if (_engine.State != FocusState.Running) return;
-
-            // ---- FR-08：缓冲期检查 ----
-            double elapsedSeconds = (DateTime.UtcNow - _focusStartedAt).TotalSeconds;
-            if (elapsedSeconds < BufferPeriodSeconds)
-            {
-                string matchDesc = string.Join("、", matches.Select(m => $"[{m.MatchType}:{m.RuleText}]"));
-                _trayIcon.ShowBubble("注意（缓冲期）",
-                    $"检测到黑名单：{matchDesc}。专注前 3 分钟仅提醒，不触发惩罚。");
-                return;
-            }
-
-            // ---- 冷却检查：用户刚点过「放弃运行」的同名进程 ----
-            if (_warnCooldowns.TryGetValue(info.ProcessName, out DateTime cooldownUntil))
-            {
-                if (DateTime.UtcNow < cooldownUntil)
-                    return; // 还在冷却中，静默跳过
-                else
-                    _warnCooldowns.Remove(info.ProcessName);
-            }
-
-            // ---- FR-07：警告对话框 ----
+            // ---- FR-07：警告对话框（自动检测进程关闭） ----
             _isPenaltyInProgress = true;
 
             try
@@ -237,17 +213,22 @@ namespace KittyFocus
                 warnDialog.Owner = this;
                 bool? warnResult = warnDialog.ShowDialog();
 
-                if (warnResult == true && warnDialog.Sacrificed)
+                if (warnResult == true && warnDialog.ProcessClosedByUser)
                 {
-                    // ---- FR-06：牺牲 → 全屏惩罚遮罩 ----
-                    var deathOverlay = new DeathOverlay($"{info.ProcessName}.exe", info.ProcessId);
-                    deathOverlay.ShowDialog();
-                    // 用户已操作（已知晓/关闭程序），继续
+                    // 用户已关闭违规进程 → 冷却期内不再重复检测
+                    _warnCooldowns[info.ProcessName] = DateTime.UtcNow.AddSeconds(60);
                 }
                 else
                 {
-                    // 用户选择「放弃运行」→ 冷却期内不再警告同进程
-                    _warnCooldowns[info.ProcessName] = DateTime.UtcNow.AddSeconds(WarnCooldownSeconds);
+                    // ---- FR-06：倒计时超时 → 专注失败界面 ----
+                    var deathOverlay = new DeathOverlay($"{info.ProcessName}.exe");
+                    deathOverlay.Owner = this;
+                    deathOverlay.ShowDialog();
+
+                    // 失败界面关闭 → 强制结束本次专注
+                    _watcher.Stop();
+                    _engine.ForceStop();
+                    _trayIcon.ShowBubble("专注失败", $"😿 猫咪因 {info.ProcessName}.exe 而受伤，本次专注已中断。");
                 }
             }
             finally
@@ -291,7 +272,6 @@ namespace KittyFocus
             }
         }
 
-        // ---- 里程碑气泡 ----
         private void CheckMilestones()
         {
             int remain = _engine.RemainingSeconds;
@@ -350,7 +330,7 @@ namespace KittyFocus
 
         private void ExitApp()
         {
-            _watcher.Stop();
+            // 真正退出时取消关闭拦截。
             _engine.ForceStop();
             _trayIcon.Dispose();
             Application.Current.Shutdown();
@@ -391,7 +371,7 @@ namespace KittyFocus
             return "🐱 空闲中 — 专注猫灵";
         }
 
-        /// <summary>
+                /// <summary>
         /// 更新环状进度条：根据剩余时间比例计算圆弧终点，
         /// 实现圆环随计时减少而逆时针消失的效果。
         /// 坐标系与 XAML 中 Canvas 一致：圆心(50,50)，半径44，顶部起点(50,6)。

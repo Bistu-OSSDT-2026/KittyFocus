@@ -1,32 +1,13 @@
 ﻿<Window x:Class="KittyFocus.Windows.WarnDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="猫爪按住程序" Height="240" Width="440"
+        Title="猫爪按住程序" Height="230" Width="440"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         WindowStyle="ToolWindow"
         Topmost="True"
         Background="#FFFBF6F0"
         ShowInTaskbar="False">
-    <Window.Resources>
-        <Style TargetType="Button">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="FontSize" Value="15"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
-
     <Grid Margin="24,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -54,23 +35,16 @@
             </StackPanel>
         </Border>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-            <TextBlock Text="倒计时：" FontSize="13" Foreground="#FF8A6A52" VerticalAlignment="Center"/>
-            <TextBlock x:Name="CountdownText" FontSize="22" FontWeight="Bold"
-                       Foreground="#FFCC6633" VerticalAlignment="Center" Margin="6,0,0,0"/>
-            <TextBlock Text=" 秒后猫咪将受到伤害" FontSize="13" Foreground="#FF8A6A52"
-                       VerticalAlignment="Center" Margin="4,0,0,0"/>
+        <StackPanel Grid.Row="3" HorizontalAlignment="Center" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock Text="倒计时：" FontSize="13" Foreground="#FF8A6A52" VerticalAlignment="Center"/>
+                <TextBlock x:Name="CountdownText" FontSize="22" FontWeight="Bold"
+                           Foreground="#FFCC6633" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                <TextBlock Text=" 秒" FontSize="13" Foreground="#FF8A6A52"
+                           VerticalAlignment="Center" Margin="2,0,0,0"/>
+            </StackPanel>
+            <TextBlock x:Name="StatusHint" Text="请关闭违规程序以保护猫咪 ✨"
+                       FontSize="12" Foreground="#FFB59B82" HorizontalAlignment="Center" Margin="0,6,0,0"/>
         </StackPanel>
-
-        <Grid Grid.Row="4" VerticalAlignment="Bottom">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <Button x:Name="DismissButton" Grid.Column="0" Content="放弃运行" Margin="0,0,6,0"
-                    Background="#FF5BB85B" Foreground="White" Click="DismissButton_Click"/>
-            <Button x:Name="SacrificeButton" Grid.Column="1" Content="牺牲猫咪" Margin="6,0,0,0"
-                    Background="#FFE05A5A" Foreground="White" Click="SacrificeButton_Click"/>
-        </Grid>
     </Grid>
 </Window>
