@@ -267,30 +267,6 @@ namespace KittyFocus
             DurationTextBox.IsEnabled = !running;
             BlacklistButton.IsEnabled = !running; // 专注中禁设
 
-            switch (_engine.State)
-            {
-                case FocusState.Idle:
-                    HintText.Text = "设置时长后点击开始";
-                    CountdownText.Text = FormatTime(_engine.TotalSeconds);
-                    StartButton.Content = "开始专注";
-                    UpdateProgressRing();
-                    _trayIcon.UpdateTooltip("🐱 空闲中 — 专注猫灵");
-                    break;
-                case FocusState.Running:
-                    HintText.Text = "坚持住，猫咪在守护你";
-                    CountdownText.Text = FormatTime(_engine.RemainingSeconds);
-                    StartButton.Content = "专注中";
-                    UpdateProgressRing();
-                    _trayIcon.UpdateTooltip(BuildTooltip());
-                    break;
-                case FocusState.Finished:
-                    HintText.Text = "太棒了！可点击「再来一轮」";
-                    CountdownText.Text = "00:00";
-                    StartButton.Content = "再来一轮";
-                    UpdateProgressRing();
-                    break;
-            }
-
             UpdateLivesIndicator();
         }
 

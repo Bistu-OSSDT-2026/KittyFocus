@@ -34,6 +34,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>Assert/icon.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -139,6 +142,15 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\cat_shake.gif" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assert\kitty.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assert\icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="kitty.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
