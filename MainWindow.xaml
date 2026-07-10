@@ -166,10 +166,7 @@
 
             <!-- 第四行：猫咪吉祥物 + 提示词 -->
             <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="🐱" FontSize="96"/>
-                <TextBlock x:Name="HintText" Text="设置时长后点击开始"
-                           FontSize="13" Foreground="#FFB59B82"
-                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                <Image Height="196" Source="/Assert/kitty.png" Stretch="Fill" Width="188" RenderTransformOrigin="0.626,0.491"/>
             </StackPanel>
 
             <!-- 第五行：专注时长输入白框 -->
