@@ -136,6 +136,16 @@
                         </TextBlock.Effect>
                     </TextBlock>
                 </Canvas>
+
+                <!-- 猫咪命数指示器：🐱=存活，🖤=已失去 -->
+                <ItemsControl x:Name="LivesIndicator"
+                              HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
             </StackPanel>
 
             <!-- 第二行：中间 - 猫咪 emoji + 提示词 -->
@@ -159,7 +169,8 @@
                                  VerticalContentAlignment="Center" TextAlignment="Center"
                                  Background="Transparent" BorderThickness="0"
                                  PreviewTextInput="DurationTextBox_PreviewTextInput"
-                                 DataObject.Pasting="DurationTextBox_Pasting"/>
+                                 DataObject.Pasting="DurationTextBox_Pasting"
+                                 TextChanged="DurationTextBox_TextChanged"/>
                         <TextBlock Text="分钟" FontSize="13" Foreground="#FF8A6A52"
                                    VerticalAlignment="Center" Margin="4,0,0,0"/>
                     </StackPanel>

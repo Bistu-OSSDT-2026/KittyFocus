@@ -16,17 +16,20 @@ namespace KittyFocus.Windows
     {
         private readonly DispatcherTimer _timer;
         private readonly string _processKey; // 小写无后缀，供 Process.GetProcessesByName 使用
+        private readonly int _livesRemaining; // 剩余命数（-1 表示未知/不显示）
         private int _secondsRemaining = 30;
 
         /// <summary>true = 用户主动关闭了违规进程。false = 超时未关。</summary>
         public bool ProcessClosedByUser { get; private set; }
 
         /// <param name="processDisplayName">界面显示名，如 "notepad.exe"。</param>
-        public WarnDialog(string processDisplayName)
+        /// <param name="livesRemaining">当前剩余命数（用于提示用户超时代价）。-1 表示不显示。</param>
+        public WarnDialog(string processDisplayName, int livesRemaining = -1)
         {
             InitializeComponent();
 
             ProcessNameText.Text = processDisplayName;
+            _livesRemaining = livesRemaining;
 
             // 提取无后缀进程名用于监测
             _processKey = processDisplayName?.Trim().ToLowerInvariant() ?? "";
@@ -90,9 +93,22 @@ namespace KittyFocus.Windows
                 ? _secondsRemaining.ToString()
                 : "⚠";
 
-            StatusHint.Text = _secondsRemaining > 0
+            string baseHint = _secondsRemaining > 0
                 ? "请关闭违规程序以保护猫咪 ✨"
                 : "时间到…";
+
+            // 追加命数提示，让用户意识到超时代价
+            if (_livesRemaining >= 0)
+            {
+                string lifeHint = _livesRemaining == 0
+                    ? "⚠ 超时将直接导致猫咪死亡！"
+                    : $"超时将失去 1 条命（当前剩余 {_livesRemaining} 条）";
+                StatusHint.Text = $"{baseHint}\n{lifeHint}";
+            }
+            else
+            {
+                StatusHint.Text = baseHint;
+            }
         }
 
         protected override void OnClosed(EventArgs e)
