@@ -46,14 +46,14 @@ jobs:
           $msbuildDir = Split-Path $msbuildExe -Parent
           echo "$msbuildDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      # 关键修复：下载 nuget.exe 并用它恢复 packages.config 中的包
+      # 关键修复：用 nuget.exe 显式指定 packages 目录恢复
       - name: Restore NuGet packages (packages.config)
         shell: pwsh
         run: |
           Write-Host "Downloading nuget.exe..."
           Invoke-WebRequest -Uri https://dist.nuget.org/win-x86-commandline/latest/nuget.exe -OutFile nuget.exe
           Write-Host "Restoring packages..."
-          .\nuget.exe restore KittyFocus.csproj
+          .\nuget.exe restore KittyFocus.csproj -PackagesDirectory .\packages
           Write-Host "Restore completed."
 
       - name: Build (${{ matrix.configuration }} / AnyCPU)
@@ -80,7 +80,6 @@ jobs:
             exit 1
           }
 
-          # 检查 WpfAnimatedGif 依赖
           $gifDll = Join-Path $outputPath "WpfAnimatedGif.dll"
           if (Test-Path $gifDll) {
             Write-Host "✓ WpfAnimatedGif.dll 已就位"
@@ -96,7 +95,6 @@ jobs:
 
           Get-ChildItem $outputPath -Recurse | ForEach-Object { Write-Host $_.FullName }
 
-      # 上传整个输出目录，保证依赖完整
       - name: Upload artifacts (${{ matrix.configuration }})
         uses: actions/upload-artifact@v4
         with:
