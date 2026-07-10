@@ -297,6 +297,7 @@ namespace KittyFocus
         /// <summary>
         /// 刷新猫咪命数指示器：🐱=存活，🖤=已失去。
         /// Idle 时按当前设定时长预览总命数；Running 时反映实时剩余。
+        /// 命数较少（≤9）时逐个显示猫咪图标；过多时改用紧凑文字，避免横向溢出。
         /// </summary>
         private void UpdateLivesIndicator()
         {
@@ -316,13 +317,29 @@ namespace KittyFocus
 
             // 防御性下限
             if (remaining < 0) remaining = 0;
+            int lost = total - remaining;
 
-            var icons = new System.Collections.Generic.List<string>();
-            for (int i = 0; i < total; i++)
-                icons.Add(i < remaining ? "🐱" : "🖤");
-
-            LivesIndicator.ItemsSource = icons;
+            if (total <= MaxLivesAsIcons)
+            {
+                // 命数较少：逐个显示猫咪图标
+                var icons = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < total; i++)
+                    icons.Add(i < remaining ? "🐱" : "🖤");
+                LivesIndicator.ItemsSource = icons;
+            }
+            else
+            {
+                // 命数过多：紧凑文字，形如「🐱 ×3　🖤 ×1」
+                var summary = new System.Collections.Generic.List<string>();
+                summary.Add(remaining > 0 ? $"🐱 ×{remaining}" : "🖤 ×0");
+                if (lost > 0)
+                    summary.Add($"🖤 ×{lost}");
+                LivesIndicator.ItemsSource = summary;
+            }
         }
+
+        /// <summary>逐个图标显示时的命数上限，超过则切换为紧凑文字。</summary>
+        private const int MaxLivesAsIcons = 9;
 
         private void CheckMilestones()
         {
