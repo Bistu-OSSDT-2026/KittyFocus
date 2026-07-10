@@ -46,8 +46,15 @@ jobs:
           $msbuildDir = Split-Path $msbuildExe -Parent
           echo "$msbuildDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Restore NuGet packages
-        run: dotnet restore KittyFocus.csproj
+      # 关键修复：用 nuget.exe 显式指定 packages 目录恢复
+      - name: Restore NuGet packages (packages.config)
+        shell: pwsh
+        run: |
+          Write-Host "Downloading nuget.exe..."
+          Invoke-WebRequest -Uri https://dist.nuget.org/win-x86-commandline/latest/nuget.exe -OutFile nuget.exe
+          Write-Host "Restoring packages..."
+          .\nuget.exe restore KittyFocus.csproj -PackagesDirectory .\packages
+          Write-Host "Restore completed."
 
       - name: Build (${{ matrix.configuration }} / AnyCPU)
         run: |
@@ -62,7 +69,6 @@ jobs:
             /verbosity:normal
         shell: pwsh
 
-      # 验证输出，并确认依赖 DLL 存在
       - name: Verify build output & dependencies
         shell: pwsh
         run: |
@@ -74,7 +80,6 @@ jobs:
             exit 1
           }
 
-          # 检查 WpfAnimatedGif 依赖
           $gifDll = Join-Path $outputPath "WpfAnimatedGif.dll"
           if (Test-Path $gifDll) {
             Write-Host "✓ WpfAnimatedGif.dll 已就位"
@@ -88,10 +93,8 @@ jobs:
           Write-Host "  产品版本: $($versionInfo.ProductVersion)"
           Write-Host "  文件大小: $((Get-Item $exePath).Length / 1KB) KB"
 
-          # 列出输出目录所有文件（便于调试）
           Get-ChildItem $outputPath -Recurse | ForEach-Object { Write-Host $_.FullName }
 
-      # 上传整个输出目录，保证依赖完整
       - name: Upload artifacts (${{ matrix.configuration }})
         uses: actions/upload-artifact@v4
         with:
@@ -112,11 +115,9 @@ jobs:
           name: KittyFocus-Release
           path: release-files
 
-      # 自动定位 exe 所在目录，将其内容打包为 zip（去除多余目录前缀）
-      - name: Create release archive
+      - name: Create release archive (with all dependencies)
         shell: pwsh
         run: |
-          # 找到 KittyFocus.exe 所在的目录（artifact 中可能是 bin/Release/...）
           $exeItem = Get-ChildItem -Path release-files -Recurse -Filter "KittyFocus.exe" | Select-Object -First 1
           if (-not $exeItem) {
             Write-Error "未在 artifact 中找到 KittyFocus.exe"
