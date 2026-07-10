@@ -27,9 +27,8 @@ KittyFocus 是一款结合 **番茄钟（Pomodoro）** 与 **虚拟宠物养成*
 
 ## 🛠 技术栈
 
-- HTML
-- CSS
-- JavaScript
+- WPF
+- c#
 - Git
 - GitHub
 
