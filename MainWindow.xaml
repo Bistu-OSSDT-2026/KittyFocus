@@ -166,7 +166,7 @@
 
             <!-- 第四行：猫咪吉祥物 + 提示词 -->
             <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Image Height="255" Source="/Assert/cat.jpg" Stretch="Fill" Width="238" RenderTransformOrigin="0.626,0.491"/>
+                <Image Height="196" Source="/Assert/kitty.png" Stretch="Fill" Width="188" RenderTransformOrigin="0.626,0.491"/>
             </StackPanel>
 
             <!-- 第五行：专注时长输入白框 -->

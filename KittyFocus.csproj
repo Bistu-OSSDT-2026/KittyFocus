@@ -133,12 +133,14 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
-    <Resource Include="Assert\cat.jpg" />
+    <Resource Include="Assert\kitty.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assert\icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="kitty.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
