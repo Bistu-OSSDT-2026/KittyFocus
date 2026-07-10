@@ -50,10 +50,10 @@
                 <TextBlock x:Name="TitleText" Text="专注失败" FontSize="34" FontWeight="Bold"
                            Foreground="#FF4A3526" HorizontalAlignment="Center" Margin="0,0,0,8"/>
 
-                <TextBlock x:Name="SubtitleText" Text="猫咪因你而受伤…" FontSize="15"
+                <TextBlock x:Name="SubtitleText" Text="猫咪离开了你…" FontSize="15"
                            Foreground="#FF8A6A52" HorizontalAlignment="Center" Margin="0,0,0,6"/>
 
-                <TextBlock x:Name="DescriptionText" Text="本次专注已因检测到违规程序而中断" FontSize="13"
+                <TextBlock x:Name="DescriptionText" Text="命数耗尽，本次专注已因违规程序而中断" FontSize="13"
                            Foreground="#FFB59B82" HorizontalAlignment="Center"
                            TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
 

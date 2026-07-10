@@ -44,7 +44,8 @@
                            VerticalAlignment="Center" Margin="2,0,0,0"/>
             </StackPanel>
             <TextBlock x:Name="StatusHint" Text="请关闭违规程序以保护猫咪 ✨"
-                       FontSize="12" Foreground="#FFB59B82" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                       FontSize="12" Foreground="#FFB59B82" HorizontalAlignment="Center"
+                       TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"/>
         </StackPanel>
     </Grid>
 </Window>

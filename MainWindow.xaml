@@ -100,55 +100,80 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <!-- 0 标题 -->
+                <RowDefinition Height="Auto"/>
+                <!-- 1 圆环倒计时 -->
+                <RowDefinition Height="Auto"/>
+                <!-- 2 猫咪命数 -->
                 <RowDefinition Height="*"/>
+                <!-- 3 猫咪吉祥物 + 提示 -->
                 <RowDefinition Height="Auto"/>
+                <!-- 4 专注时长 -->
                 <RowDefinition Height="Auto"/>
+                <!-- 5 控制按钮 -->
             </Grid.RowDefinitions>
 
-            <!-- 第一行：右上角 - 软件名称 + 小圆环倒计时 -->
-            <StackPanel Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,0,8">
-                <!-- 软件名称 -->
+            <!-- 第一行：标题（居中） -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal"
+                        HorizontalAlignment="Center" Margin="0,0,0,10">
+                <TextBlock Text="🐱" FontSize="20" VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <TextBlock Text="KittyFocus" FontSize="22" FontWeight="Bold"
-                           Foreground="#FF6B4226"
-                           HorizontalAlignment="Right" Margin="0,0,0,6"/>
-                <!-- 小圆环倒计时（用 Canvas 精确控制坐标系） -->
-                <Canvas Width="100" Height="100" HorizontalAlignment="Right">
-                    <!-- 环状进度条背景（淡粉色底环） -->
-                    <Ellipse Stroke="#FFEDD5D5" StrokeThickness="6"
-                             Width="88" Height="88"
-                             Canvas.Left="6" Canvas.Top="6"/>
-
-                    <!-- 环状进度条前景（深粉色弧，与底环同心同径） -->
-                    <Path x:Name="ProgressArc"
-                          Stroke="#FFC9A9B8" StrokeThickness="6"
-                          StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round"
-                          Fill="Transparent"/>
-
-                    <!-- 圆圈内的粉色倒计时 -->
-                    <TextBlock x:Name="CountdownText" Text="25:00"
-                               FontSize="16" FontWeight="Bold"
-                               Canvas.Left="0" Width="100" Height="100"
-                               TextAlignment="Center"
-                               Foreground="#FFF28CB1" HorizontalAlignment="Center" VerticalAlignment="Top" Canvas.Top="34">
-                        <TextBlock.Effect>
-                            <DropShadowEffect Color="#44F28CB1" BlurRadius="6" ShadowDepth="0"/>
-                        </TextBlock.Effect>
-                    </TextBlock>
-                </Canvas>
+                           Foreground="#FF6B4226" VerticalAlignment="Center"/>
             </StackPanel>
 
-            <!-- 第二行：中间 - 猫咪 emoji + 提示词 -->
-            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="🐱" FontSize="120" Height="208"
-                           />
+            <!-- 第二行：圆环倒计时（居中） -->
+            <Canvas Grid.Row="1" Width="100" Height="100"
+                    HorizontalAlignment="Center" Margin="0,0,0,4">
+                <!-- 环状进度条背景（淡粉色底环） -->
+                <Ellipse Stroke="#FFEDD5D5" StrokeThickness="6"
+                         Width="88" Height="88"
+                         Canvas.Left="6" Canvas.Top="6"/>
+
+                <!-- 环状进度条前景（深粉色弧，与底环同心同径） -->
+                <Path x:Name="ProgressArc"
+                      Stroke="#FFC9A9B8" StrokeThickness="6"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      Fill="Transparent"/>
+
+                <!-- 圆圈内的粉色倒计时 -->
+                <TextBlock x:Name="CountdownText" Text="25:00"
+                           FontSize="16" FontWeight="Bold"
+                           Canvas.Left="0" Width="100" Height="100"
+                           TextAlignment="Center"
+                           Foreground="#FFF28CB1" HorizontalAlignment="Center" VerticalAlignment="Top" Canvas.Top="34">
+                    <TextBlock.Effect>
+                        <DropShadowEffect Color="#44F28CB1" BlurRadius="6" ShadowDepth="0"/>
+                    </TextBlock.Effect>
+                </TextBlock>
+            </Canvas>
+
+            <!-- 第三行：猫咪命数（居中、显眼） -->
+            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Margin="0,2,0,10">
+                <TextBlock Text="猫咪命数" FontSize="11" Foreground="#FFB59B82"
+                           HorizontalAlignment="Center" Margin="0,0,0,3"/>
+                <!-- 🐱=存活，🖤=已失去；命数过多时改为紧凑文字，避免横向溢出 -->
+                <ItemsControl x:Name="LivesIndicator" FontSize="22"
+                              HorizontalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- 第四行：猫咪吉祥物 + 提示词 -->
+            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="🐱" FontSize="96"/>
                 <TextBlock x:Name="HintText" Text="设置时长后点击开始"
                            FontSize="13" Foreground="#FFB59B82"
                            HorizontalAlignment="Center" Margin="0,2,0,0"/>
             </StackPanel>
 
-            <!-- 第三行：专注时长输入白框 -->
-            <Grid Grid.Row="2" Margin="0,6,0,16">
+            <!-- 第五行：专注时长输入白框 -->
+            <Grid Grid.Row="4" Margin="0,6,0,16">
                 <Border Background="White" CornerRadius="10"
                         BorderBrush="#FFE0D5C8" BorderThickness="1"
                         HorizontalAlignment="Center" Padding="14,8">
@@ -159,15 +184,16 @@
                                  VerticalContentAlignment="Center" TextAlignment="Center"
                                  Background="Transparent" BorderThickness="0"
                                  PreviewTextInput="DurationTextBox_PreviewTextInput"
-                                 DataObject.Pasting="DurationTextBox_Pasting"/>
+                                 DataObject.Pasting="DurationTextBox_Pasting"
+                                 TextChanged="DurationTextBox_TextChanged"/>
                         <TextBlock Text="分钟" FontSize="13" Foreground="#FF8A6A52"
                                    VerticalAlignment="Center" Margin="4,0,0,0"/>
                     </StackPanel>
                 </Border>
             </Grid>
 
-            <!-- 第四行：三个按钮 -->
-            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+            <!-- 第六行：三个按钮 -->
+            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
                 <Button x:Name="StartButton" Content="开始专注"
                         Style="{StaticResource StartButton}" Margin="0,0,8,0"
                         Click="StartButton_Click"/>

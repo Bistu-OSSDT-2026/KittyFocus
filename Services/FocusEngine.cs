@@ -24,8 +24,12 @@ namespace KittyFocus.Services
         public const int MinMinutes = 1;
         public const int MaxMinutes = 720;
 
+        /// <summary>每 20 分钟对应 1 条命（0~20 分钟=1 命，21~40=2 命，依此类推）。</summary>
+        public const int MinutesPerLife = 20;
+
         private readonly DispatcherTimer _timer;
         private int _remainingSeconds;
+        private int _livesRemaining;
 
         public FocusEngine()
         {
@@ -52,6 +56,21 @@ namespace KittyFocus.Services
         /// <summary>剩余秒数。</summary>
         public int RemainingSeconds => _remainingSeconds;
 
+        /// <summary>本次专注总命数（根据时长按每 20 分钟 1 命计算）。</summary>
+        public int TotalLives { get; private set; }
+
+        /// <summary>剩余命数。扣到 -1 表示猫咪死亡。</summary>
+        public int LivesRemaining => _livesRemaining;
+
+        /// <summary>
+        /// 根据专注分钟数计算总命数：0~20 分钟=1 命，21~40=2 命，以此类推。
+        /// </summary>
+        public static int CalculateLives(int minutes)
+        {
+            if (minutes <= 0) return 0;
+            return (int)Math.Ceiling(minutes / (double)MinutesPerLife);
+        }
+
         /// <summary>设置专注时长（分钟），校验 1~720。返回是否成功。</summary>
         public bool SetDuration(int minutes)
         {
@@ -72,10 +91,23 @@ namespace KittyFocus.Services
 
             // 开始前重置剩余时间，保证 Finished 后重新开始也正确。
             _remainingSeconds = TotalSeconds;
+            // 根据专注时长初始化猫咪命数（每 20 分钟 1 命）。
+            TotalLives = CalculateLives(FocusDurationMinutes);
+            _livesRemaining = TotalLives;
             State = FocusState.Running;
             OnStateChanged();
             _timer.Start();
             return true;
+        }
+
+        /// <summary>
+        /// 扣除 1 条命。返回 true 表示猫咪死亡（命数已被扣到 -1）；
+        /// 返回 false 表示仍有命数，专注可继续。
+        /// </summary>
+        public bool LoseLife()
+        {
+            _livesRemaining--;
+            return _livesRemaining < 0;
         }
 
         /// <summary>强制结束专注，回到 Idle。已完成的专注也调此方法重置。</summary>

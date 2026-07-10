@@ -105,6 +105,7 @@ namespace KittyFocus
 
             ResetMilestones();
             _engine.Start();
+            UpdateLivesIndicator();
 
             // ---- 模块二：启动进程轮询 ----
             _focusStartedAt = DateTime.UtcNow;
@@ -209,7 +210,7 @@ namespace KittyFocus
                 if (!IsVisible)
                     RestoreWindow();
 
-                var warnDialog = new WarnDialog($"{info.ProcessName}.exe");
+                var warnDialog = new WarnDialog($"{info.ProcessName}.exe", _engine.LivesRemaining);
                 warnDialog.Owner = this;
                 bool? warnResult = warnDialog.ShowDialog();
 
@@ -220,15 +221,34 @@ namespace KittyFocus
                 }
                 else
                 {
-                    // ---- FR-06：倒计时超时 → 专注失败界面 ----
-                    var deathOverlay = new DeathOverlay($"{info.ProcessName}.exe");
-                    deathOverlay.Owner = this;
-                    deathOverlay.ShowDialog();
+                    // ---- 倒计时超时未关 → 扣除 1 条命 ----
+                    bool dead = _engine.LoseLife();
+                    UpdateLivesIndicator();
 
-                    // 失败界面关闭 → 强制结束本次专注
-                    _watcher.Stop();
-                    _engine.ForceStop();
-                    _trayIcon.ShowBubble("专注失败", $"😿 猫咪因 {info.ProcessName}.exe 而受伤，本次专注已中断。");
+                    if (dead)
+                    {
+                        // ---- FR-06：命数耗尽 → 专注失败界面 ----
+                        var deathOverlay = new DeathOverlay($"{info.ProcessName}.exe");
+                        deathOverlay.Owner = this;
+                        deathOverlay.ShowDialog();
+
+                        // 失败界面关闭 → 强制结束本次专注
+                        _watcher.Stop();
+                        _engine.ForceStop();
+                        _trayIcon.ShowBubble("专注失败", $"😿 猫咪因 {info.ProcessName}.exe 而死亡，本次专注已中断。");
+                    }
+                    else
+                    {
+                        // ---- 仍有命数 → 警告并继续专注 ----
+                        int remaining = _engine.LivesRemaining;
+                        string msg = remaining == 0
+                            ? "⚠️ 最后一条命！再超时一次猫咪就会死亡！"
+                            : $"⚠️ 猫咪失去一条命，剩余 {remaining} 条，专注继续。";
+                        _trayIcon.ShowBubble("猫咪受伤了", msg);
+                        // 恢复窗口让用户看到命数变化，专注继续（不 ForceStop）
+                        if (!IsVisible)
+                            RestoreWindow();
+                    }
                 }
             }
             finally
@@ -270,7 +290,56 @@ namespace KittyFocus
                     UpdateProgressRing();
                     break;
             }
+
+            UpdateLivesIndicator();
         }
+
+        /// <summary>
+        /// 刷新猫咪命数指示器：🐱=存活，🖤=已失去。
+        /// Idle 时按当前设定时长预览总命数；Running 时反映实时剩余。
+        /// 命数较少（≤9）时逐个显示猫咪图标；过多时改用紧凑文字，避免横向溢出。
+        /// </summary>
+        private void UpdateLivesIndicator()
+        {
+            int total, remaining;
+            if (_engine.State == FocusState.Running)
+            {
+                total = _engine.TotalLives;
+                remaining = _engine.LivesRemaining;
+            }
+            else
+            {
+                // Idle / Finished：按输入框时长预览总命数
+                int minutes = int.TryParse(DurationTextBox.Text, out int m) ? m : _engine.FocusDurationMinutes;
+                total = FocusEngine.CalculateLives(minutes);
+                remaining = total;
+            }
+
+            // 防御性下限
+            if (remaining < 0) remaining = 0;
+            int lost = total - remaining;
+
+            if (total <= MaxLivesAsIcons)
+            {
+                // 命数较少：逐个显示猫咪图标
+                var icons = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < total; i++)
+                    icons.Add(i < remaining ? "🐱" : "🖤");
+                LivesIndicator.ItemsSource = icons;
+            }
+            else
+            {
+                // 命数过多：紧凑文字，形如「🐱 ×3　🖤 ×1」
+                var summary = new System.Collections.Generic.List<string>();
+                summary.Add(remaining > 0 ? $"🐱 ×{remaining}" : "🖤 ×0");
+                if (lost > 0)
+                    summary.Add($"🖤 ×{lost}");
+                LivesIndicator.ItemsSource = summary;
+            }
+        }
+
+        /// <summary>逐个图标显示时的命数上限，超过则切换为紧凑文字。</summary>
+        private const int MaxLivesAsIcons = 9;
 
         private void CheckMilestones()
         {
@@ -354,6 +423,13 @@ namespace KittyFocus
             {
                 e.CancelCommand();
             }
+        }
+
+        // ---- 时长变化时实时刷新命数预览（仅 Idle/Finished 状态） ----
+        private void DurationTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_engine.State != FocusState.Running)
+                UpdateLivesIndicator();
         }
 
         // ---- 工具方法 ----
